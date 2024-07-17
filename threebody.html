@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<body>
+  <canvas id="canvas"></canvas>
+  <script type="text/javascript">
+    // 动画兼容函数
+    window.requestAnimFrame = (function () {
+      return (
+        window.requestAnimationFrame ||
+        window.webkitRequestAnimationFrame ||
+        window.mozRequestAnimationFrame ||
+        window.oRequestAnimationFrame ||
+        window.msRequestAnimationFrame ||
+        function (callback) {
+          window.setTimeout(callback, 1000 / 60)
+        }
+      )
+    })()
+
+    const canvas = document.getElementById('canvas')
+    const context = canvas.getContext('2d')
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+
+    // 创建粒子
+    var dots = []
+    // for (var i = 0; i <2; i++) {
+    //   dots.push({
+    //     x: Math.random() * canvas.width, // x  , y  为  粒子坐标
+    //     y: Math.random() * canvas.height,
+    //     xa: Math.random() * 3 - 1.5, // xa , ya 为  粒子 xy 轴加速度
+    //     ya: Math.random() * 3 - 1.5,
+    //     max: 500 // 连线的最大距离 px
+    //   })
+    // }
+    dots.push({
+      m: 28,
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      xa: 0,
+      ya: 0,
+      max: 500,
+      track: []
+    })
+    dots.push({
+      m: 1,
+      x: canvas.width / 2,
+      y: canvas.height / 2 - 200,
+      xa: 4.6 + (Math.random() - 0.5)*2,
+      ya: 0,
+      max: 500,
+      track: []
+    })
+
+    dots.push({
+      m: 1,
+      x: canvas.width / 2,
+      y: canvas.height / 2 + 200,
+      xa: -4.6 + (Math.random() - 0.5)*2,
+      ya: 0,
+      max: 500,
+      track: []
+    })
+
+
+
+
+
+
+    // 绘制粒子
+    function drawDots() {
+      // 先清空
+      //console.log(dots[1].xa);
+
+
+
+      // 循环加载粒子
+      dots.forEach((dot) => {
+        // 粒子位移
+        dot.x += dot.xa
+        dot.y += dot.ya
+
+        //保存粒子轨迹坐标
+        var point_x = Math.round(dot.x)
+        var point_y = Math.round(dot.y)
+        if (dot.track.length > 1) {
+          var last_x = dot.track[dot.track.length - 1].x
+          var last_y = dot.track[dot.track.length - 1].y
+          if (Math.sqrt((dot.x - last_x) * (dot.x - last_x) + (dot.y - last_y) * (dot.y - last_y)) > 2) {
+            dot.track.push({
+              x: point_x,
+              y: point_y
+            })
+            if (dot.track.length > 2000) {
+              dot.track.shift()
+            }
+          }
+        }
+        else {
+          dot.track.push({
+            x: point_x,
+            y: point_y
+          })
+        }
+
+        // 遇到边界将 加速度 反向
+        //dot.xa *= dot.x > canvas.width || dot.x < 0 ? -1 : 1
+        //dot.ya *= dot.y > canvas.height || dot.y < 0 ? -1 : 1
+
+        // 绘制点
+        context.fillStyle = 'rgba(255,218,27,1)'
+        context.fillRect(dot.x - 3, dot.y - 3, 6, 6)
+
+        //console.log(dot.x+"q"+dot.y)
+
+        drawLine(dot, dots)
+
+      })
+    }
+    function gravity() {
+      for (var selfFlag = 0; selfFlag < dots.length; selfFlag++) {
+        for (var otherFlag = 0; otherFlag < dots.length; otherFlag++) {
+          if (selfFlag != otherFlag) {
+            var xc = dots[otherFlag].x - dots[selfFlag].x,
+              yc = dots[otherFlag].y - dots[selfFlag].y,
+              dis = '',
+              ax = 0,
+              ay = 0,
+              fx = 0,
+              fy = 0,
+              gvt = 0
+            dis = Math.sqrt(xc * xc + yc * yc)
+            if (dis <=20)
+            {
+              dis =20;
+            }
+            gvt = (200 * dots[selfFlag].m * dots[otherFlag].m) / (dis * dis)
+            fx = (xc / dis) * gvt
+            fy = (yc / dis) * gvt
+            ax = fx
+            ay = fy
+            dots[selfFlag].xa += ax / dots[selfFlag].m
+            dots[selfFlag].ya += ay / dots[selfFlag].m
+          }
+        }
+      }
+
+
+      // var xc = dots[0].x - dots[1].x,
+      //   yc = dots[0].y - dots[1].y,
+      //   dis = '',
+      //   ax = 0,
+      //   ay = 0,
+      //   fx = 0,
+      //   fy = 0,
+      //   gvt = 0
+      // dis = Math.sqrt(xc * xc + yc * yc)
+      // gvt = 2000 / (dis * dis)
+      // fx = (xc / dis) * gvt
+      // fy = (yc / dis) * gvt
+      // ax = fx
+      // ay = fy
+      // dots[1].xa += ax / dots[1].m
+      // dots[1].ya += ay / dots[1].m
+      // dots[0].xa += ((ax / dots[0].m) * -1)
+      // dots[0].ya += ((ay / dots[0].m) * -1)
+    }
+
+    /**
+     * 计算距离 并连线
+     * @param dot 当前点
+     * @param dots 所有点
+     */
+    function drawLine(dot, dots) {
+      for (var i = 0; i < dots.length; i++) {
+        var item = dots[i]
+
+        // 过滤错误信息
+        if (dot === item || item.x === null || item.y === null) continue
+        // 创建变量
+        let xc = dot.x - item.x,
+          yc = dot.y - item.y,
+          dis = '',
+          ratio = ''
+
+        // 两个粒子之间的距离
+        dis = Math.sqrt(xc * xc + yc * yc)
+
+        // 判断 粒子 之间的距离
+        if (dis < item.max) {
+          // 计算距离比 -- 用于线 厚度
+          ratio = (item.max - dis) / item.max
+          // 画线
+          context.beginPath()
+          context.lineWidth = ratio / 2
+          context.strokeStyle = 'rgba(255,218,27,1)'
+          context.moveTo(dot.x, dot.y)
+          context.lineTo(item.x, item.y)
+          context.stroke()
+        }
+      }
+    }
+
+
+    function drawTrack(dot, color) {
+      dot.track.forEach((point) => {
+        context.fillStyle = color
+        context.fillRect(point.x, point.y, 1, 1)
+      })
+    }
+
+    function drawButton(ctx, startPoint, width, height, radius, borderColor, backgroundColor, text, textColor, fontSize) {
+      ctx.strokeStyle = borderColor;
+      ctx.fillStyle = backgroundColor;
+      ctx.beginPath();
+      ctx.moveTo(startPoint.x, startPoint.y + radius);
+      ctx.arcTo(startPoint.x, startPoint.y, startPoint.x + radius, startPoint.y, radius);
+      ctx.lineTo(startPoint.x + width - radius, startPoint.y)
+      ctx.arcTo(startPoint.x + width, startPoint.y, startPoint.x + width, startPoint.y + radius, radius);
+      ctx.lineTo(startPoint.x + width, startPoint.y + height - radius)
+      ctx.arcTo(startPoint.x + width, startPoint.y + height, startPoint.x + width - radius, startPoint.y + height, radius);
+      ctx.lineTo(startPoint.x + radius, startPoint.y + height)
+      ctx.arcTo(startPoint.x, startPoint.y + height, startPoint.x, startPoint.y + height - radius, radius)
+      ctx.closePath();
+      ctx.stroke();
+      ctx.fill();
+      ctx.fillStyle = textColor;
+      ctx.font = `${fontSize}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, startPoint.x + width / 2, startPoint.y + height / 2);
+    }
+    canvas.addEventListener('click', (e) => {
+        const pos = {
+          x: e.clientX,
+          y: e.clientY
+        };
+        if((pos.x>canvas.width / 2 - 80)&&(pos.x<canvas.width / 2 + 80)&&(pos.y>canvas.height - 80)&&(pos.y<canvas.height - 80+50)){
+          location.reload()
+        }
+      })
+
+    drawDots()
+    //
+
+    function animate() {
+      context.clearRect(0, 0, canvas.width, canvas.height)
+      context.fillStyle = 'rgba(0,43,54,1)'
+      context.fillRect(0, 0, canvas.width, canvas.height)
+      drawTrack(dots[0], 'rgba(200,100,100,1)')
+      drawTrack(dots[1], 'rgba(100,200,100,1)')
+      drawTrack(dots[2], 'rgba(100,100,200,1)')
+      gravity()
+      drawDots()
+      context.textAlign = 'center'
+      context.font = '50px serif'
+      context.fillStyle = 'rgba(200,200,54,1)'
+      context.fillText('三体运动模拟', canvas.width / 2, 100)
+      drawButton(context, { x: canvas.width / 2 - 75, y: canvas.height - 80 }, 150, 36, 4, '#000', '#3377ff', '重置三体宇宙', '#fff', 14)
+      requestAnimFrame(animate)
+
+    }
+    animate()
+
+  </script>
+</body>
+
+</html>
